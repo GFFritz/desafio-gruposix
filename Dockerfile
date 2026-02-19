@@ -30,10 +30,9 @@ COPY --from=frontend /app/public/build ./public/build
 
 RUN composer dump-autoload --optimize
 
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+# Permissões importantes
+RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 10000
 
-CMD php artisan serve --host=0.0.0.0 --port=${PORT:-10000}
+CMD php artisan serve --host=0.0.0.0 --port=${PORT}

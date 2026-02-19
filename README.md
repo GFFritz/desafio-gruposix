@@ -124,9 +124,22 @@ php artisan view:cache
 
 Configurar Nginx/Apache apontando para `public/`. Garantir que Redis está instalado e rodando.
 
-### Opção 2 — Docker
+### Opção 2 — Render.com (Docker)
 
-Criar `docker-compose.yml` com serviços: `app` (PHP + Laravel), `redis`.
+1. Criar um **Web Service** no Render apontando para o repositório GitHub
+2. Selecionar **Docker** como ambiente
+3. Criar um serviço **Redis** no Render
+4. Configurar as seguintes **Environment Variables** no Web Service:
+
+| Variável | Valor |
+| --- | --- |
+| `APP_KEY` | Gerar via `php artisan key:generate --show` |
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `ORDERS_API_URL` | `https://dev-crm.ogruposix.com/candidato-teste-pratico-backend-dashboard/test-orders` |
+| `CACHE_STORE` | `redis` |
+| `REDIS_CLIENT` | `phpredis` |
+| `REDIS_URL` | URL interna do Redis criado no Render |
 
 ### Métricas Implementadas
 

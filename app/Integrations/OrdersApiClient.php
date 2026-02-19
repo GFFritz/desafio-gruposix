@@ -7,12 +7,10 @@ use Illuminate\Support\Facades\Log;
 
 class OrdersApiClient
 {
-    private const API_URL = 'https://dev-crm.ogruposix.com/candidato-teste-pratico-backend-dashboard/test-orders';
-
     public function fetchOrders(): ?array
     {
         try {
-            $response = Http::timeout(30)->get(self::API_URL);
+            $response = Http::timeout(30)->get(config('services.orders_api.url'));
 
             if ($response->successful()) {
                 return $response->json();

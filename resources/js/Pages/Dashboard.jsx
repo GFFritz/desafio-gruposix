@@ -4,6 +4,7 @@ import {
   Package, DollarSign, CheckCircle2, Users, Ticket, RotateCcw,
   Trophy, TrendingUp, Award, CreditCard, Globe, AlertTriangle,
   Search, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -52,13 +53,13 @@ function KPICard({ title, value, subtitle, icon, color = 'indigo' }) {
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-5 hover:border-gray-600/50 transition-all duration-300 hover:shadow-lg hover:shadow-gray-900/20">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-gray-400 text-sm font-medium">{title}</span>
+        <span className="text-gray-300 text-sm font-medium">{title}</span>
         <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${colorMap[color]} flex items-center justify-center text-white shadow-lg`}>
           {icon}
         </div>
       </div>
       <div className="text-2xl font-bold text-white mb-1">{value}</div>
-      {subtitle && <div className="text-xs text-gray-500">{subtitle}</div>}
+      {subtitle && <div className="text-xs text-gray-400">{subtitle}</div>}
     </div>
   );
 }
@@ -116,6 +117,26 @@ function OrdersTable({ orders }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState(null);
+
+  const handleSort = (key) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir('asc');
+    } else if (sortDir === 'asc') {
+      setSortDir('desc');
+    } else {
+      setSortKey(null);
+      setSortDir(null);
+    }
+    setPage(1);
+  };
+
+  const SortIcon = ({ col }) => {
+    if (sortKey !== col) return <ArrowUpDown className="w-3 h-3 opacity-40" />;
+    return sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
+  };
 
   const filtered = useMemo(() => {
     if (!search.trim()) return orders;
@@ -127,8 +148,20 @@ function OrdersTable({ orders }) {
     );
   }, [orders, search]);
 
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      let va = a[sortKey], vb = b[sortKey];
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.ceil(sorted.length / perPage);
+  const paginated = sorted.slice((page - 1) * perPage, page * perPage);
 
   const statusColor = (status) => {
     if (status === 'Fully Fulfilled') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -188,15 +221,48 @@ function OrdersTable({ orders }) {
           </select>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      {/* Mobile: cards */}
+      <div className="md:hidden space-y-3">
+        {paginated.map(order => (
+          <div key={order.id} className="bg-gray-900/40 border border-gray-700/30 rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300 font-mono text-xs">#{order.id}</span>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${statusColor(order.status)}`}>
+                {order.status}
+              </span>
+            </div>
+            <div className="text-gray-300 text-sm truncate">{order.customer}</div>
+            <div className="flex items-center justify-between">
+              <span className="text-white font-semibold text-sm">{fmt.usd(order.total)}</span>
+              <span className="text-gray-500 text-xs">{fmt.date(order.date)}</span>
+            </div>
+          </div>
+        ))}
+        {paginated.length === 0 && (
+          <div className="py-8 text-center text-gray-600">Nenhum pedido encontrado.</div>
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-gray-700/50">
-              <th className="pb-3 text-left font-medium">ID</th>
-              <th className="pb-3 text-left font-medium">Cliente</th>
-              <th className="pb-3 text-left font-medium">Status</th>
-              <th className="pb-3 text-right font-medium">Valor</th>
-              <th className="pb-3 text-right font-medium">Data</th>
+              <th className="pb-3 text-left font-medium cursor-pointer select-none" onClick={() => handleSort('id')}>
+                <span className="inline-flex items-center gap-1">ID <SortIcon col="id" /></span>
+              </th>
+              <th className="pb-3 text-left font-medium cursor-pointer select-none" onClick={() => handleSort('customer')}>
+                <span className="inline-flex items-center gap-1">Cliente <SortIcon col="customer" /></span>
+              </th>
+              <th className="pb-3 text-left font-medium cursor-pointer select-none" onClick={() => handleSort('status')}>
+                <span className="inline-flex items-center gap-1">Status <SortIcon col="status" /></span>
+              </th>
+              <th className="pb-3 text-right font-medium cursor-pointer select-none" onClick={() => handleSort('total')}>
+                <span className="inline-flex items-center gap-1 justify-end">Valor <SortIcon col="total" /></span>
+              </th>
+              <th className="pb-3 text-right font-medium cursor-pointer select-none" onClick={() => handleSort('date')}>
+                <span className="inline-flex items-center gap-1 justify-end">Data <SortIcon col="date" /></span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700/30">
@@ -226,7 +292,7 @@ function OrdersTable({ orders }) {
       {totalPages > 1 && (
         <div className="flex flex-col sm:flex-row items-center justify-between mt-4 pt-3 border-t border-gray-700/50 gap-3">
           <span className="text-xs text-gray-500">
-            Mostrando {(page - 1) * perPage + 1}-{Math.min(page * perPage, filtered.length)} de {filtered.length}
+            Mostrando {(page - 1) * perPage + 1}-{Math.min(page * perPage, sorted.length)} de {sorted.length}
           </span>
           <div className="flex items-center gap-1">
             <PaginationButton onClick={() => setPage(1)} disabled={page === 1}>
@@ -284,6 +350,7 @@ export default function Dashboard() {
     topProductsByRevenue, averageTicket, paymentConversion,
     topCities, salesByDate, highRefundProducts,
   } = usePage().props;
+
 
   const salesChartData = {
     labels: (salesByDate || []).map(d => fmt.date(d.date)),
@@ -350,7 +417,27 @@ export default function Dashboard() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'bottom', labels: { color: '#9ca3af', usePointStyle: true, pointStyle: 'circle', padding: 16 } },
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: '#9ca3af',
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 16,
+          generateLabels: (chart) => {
+            const data = chart.data;
+            return data.labels.map((label, i) => ({
+              text: `${label} (${data.datasets[0].data[i]})`,
+              fillStyle: data.datasets[0].backgroundColor[i],
+              fontColor: '#9ca3af',
+              strokeStyle: 'transparent',
+              pointStyle: 'circle',
+              hidden: false,
+              index: i,
+            }));
+          },
+        },
+      },
       tooltip: defaultChartOptions.plugins.tooltip,
     },
   };
@@ -397,8 +484,10 @@ export default function Dashboard() {
         </section>
 
         <ChartCard title={<span className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-indigo-400" /> Análise Temporal de Vendas</span>}>
-          <div className="h-72">
-            <Line data={salesChartData} options={salesChartOptions} />
+          <div className="h-72 md:h-72 overflow-x-auto">
+            <div className="min-w-[600px] h-full">
+              <Line data={salesChartData} options={salesChartOptions} />
+            </div>
           </div>
         </ChartCard>
 
@@ -444,8 +533,8 @@ export default function Dashboard() {
                       <td className="py-3 text-right text-gray-400">{prod.refundedQuantity}</td>
                       <td className="py-3 text-right">
                         <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${prod.refundRate > 30
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                           }`}>
                           {prod.refundRate}%
                         </span>
